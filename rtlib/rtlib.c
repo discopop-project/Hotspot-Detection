@@ -61,7 +61,7 @@ void printOut()
         fprintf(fptr, "%d", i);
 
         // fprintf(fptr, " %Lf", (time_b[i])/ (long double)(CLOCKS_PER_SEC) );
-        fprintf(fptr, " %Lf", time_b[i]);
+        fprintf(fptr, " %.15Lf", time_b[i]);
 
         fprintf(fptr, "\n");
         //}

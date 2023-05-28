@@ -346,3 +346,13 @@ do
   log -v "$(cat result.txt)"
   mv result.txt hotspot_result_${i}.txt
 done
+
+# combine the result files
+log -i "Combining the results..."
+files=""
+for (( i=0; i<${arraylength}; i++ ));
+do
+  files+=" hotspot_result_${i}.txt"
+done
+log -v "$files"
+hotspot_detection -f $files -o hotspot_result.txt
