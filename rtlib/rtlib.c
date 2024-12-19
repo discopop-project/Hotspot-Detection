@@ -1,4 +1,7 @@
 #define _GNU_SOURCE
+#define OPENMP 1
+
+#include <omp.h>
 
 // temporary rtlib
 #include <stdio.h>
@@ -19,6 +22,7 @@ struct timeval start1, end1;
 
 extern inline void __hotspot_detection_init(){
     // prepare environment variables
+
     char const * tmp = getenv("DOT_DISCOPOP");
     if(tmp == NULL){
         // DOT_DISCOPOP needs to be initialized
@@ -55,6 +59,10 @@ extern inline void __hotspot_detection_init(){
         time_b[i] = 0;
     }
 
+#if OPENMP
+        printf("thread %d: initializing\n\n", omp_get_thread_num());
+#endif
+
 }
 
 /*
@@ -81,6 +89,9 @@ extern inline void __hotspot_detection_loop_entry(const long int id)
         gettimeofday(&start1, NULL);
         time_a[id] = start1.tv_sec + 1e-6 * start1.tv_usec;
         // time_a[id] = clock();
+#if OPENMP
+        printf("thread %d: enter loop %ld, addr: %d\n", omp_get_thread_num(), id, &time_a);
+#endif
     }
     time_flag[id]++;
     return;
@@ -88,6 +99,9 @@ extern inline void __hotspot_detection_loop_entry(const long int id)
 
 extern inline void __hotspot_detection_loop_body_start(const long int id)
 {
+#if OPENMP
+        printf("thread %d: start loop body %ld\n", omp_get_thread_num(), id);
+#endif
  /*   if (time_flag[id] == 0)
     {
         gettimeofday(&start1, NULL);
@@ -119,6 +133,9 @@ extern inline void __hotspot_detection_loop_end(const long int id)
         gettimeofday(&end1, NULL);
         time_b[id] = time_b[id] + (end1.tv_sec + 1e-6 * end1.tv_usec) - time_a[id];
         // time_b[id] = time_b[id] + clock() - time_a[id];
+#if OPENMP
+        printf("thread %d: exit loop %ld\n", omp_get_thread_num(), id);
+#endif
     }
     return;
 }

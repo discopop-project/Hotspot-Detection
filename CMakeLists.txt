@@ -49,11 +49,17 @@ add_subdirectory(rtlib)
 
 add_subdirectory(scripts)
 
-# install Hotspot Analyzer python modules
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# setup Hotspot Analyzer venv
+message(STATUS "Setting up Hotspot Analyzer python venv")
+execute_process(COMMAND ${Python3_EXECUTABLE} -m venv ${HotspotDetection_SOURCE_DIR}/venv)
+set(Python3_VENV_EXECUTABLE ${HotspotDetection_SOURCE_DIR}/venv/bin/python3)
+
+# install Hotspot Analyzer python modules
 message(STATUS "Installing Hotspot Analyzer python modules")
 execute_process(
-        COMMAND ${Python3_EXECUTABLE} -m pip install ${HotspotDetection_SOURCE_DIR}
+        COMMAND ${Python3_VENV_EXECUTABLE} -m pip install ${HotspotDetection_SOURCE_DIR}
         RESULT_VARIABLE HD_INSTALLATION_EXIT_CODE
         OUTPUT_VARIABLE HD_INSTALLATION_OUTPUT
 )
@@ -61,6 +67,12 @@ execute_process(
 if(${HD_INSTALLATION_EXIT_CODE})
     message(FATAL_ERROR "${HD_INSTALLATION_OUTPUT}")
 endif()
+
+# create symlinks for python executables
+message(STATUS "Creating symlinks for HotspotDetection python executables")
+set(HD_LOCAL_BIN_DIR "$ENV{HOME}/.local/bin")
+execute_process(COMMAND rm -f ${HD_LOCAL_BIN_DIR}/hotspot_analyzer)
+execute_process(COMMAND ln -sf ${HotspotDetection_SOURCE_DIR}/venv/bin/hotspot_analyzer ${HD_LOCAL_BIN_DIR}/hotspot_analyzer)
 
 
 # save build configuration to build/build_config.txt
