@@ -73,6 +73,8 @@ message(STATUS "Creating symlinks for HotspotDetection python executables")
 set(HD_LOCAL_BIN_DIR "$ENV{HOME}/.local/bin")
 execute_process(COMMAND rm -f ${HD_LOCAL_BIN_DIR}/hotspot_analyzer)
 execute_process(COMMAND ln -sf ${HotspotDetection_SOURCE_DIR}/venv/bin/hotspot_analyzer ${HD_LOCAL_BIN_DIR}/hotspot_analyzer)
+execute_process(COMMAND rm -f ${HD_LOCAL_BIN_DIR}/hotspot_comparator)
+execute_process(COMMAND ln -sf ${HotspotDetection_SOURCE_DIR}/venv/bin/hotspot_comparator ${HD_LOCAL_BIN_DIR}/hotspot_comparator)
 
 
 # save build configuration to build/build_config.txt

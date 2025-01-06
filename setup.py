@@ -29,7 +29,10 @@ setup(
     # long_description=open(SRC / "README.md").read(),
     long_description_content_type="text/markdown",
     install_requires=[
-	"numpy"
+	"numpy",
+    "matplotlib",
+    "jsonpickle",
+    "discopop"
     ],
     extras_require={
     },
@@ -37,6 +40,7 @@ setup(
     entry_points={
         "console_scripts": [
             "hotspot_analyzer=hotspot_analyzer.__main__:main",
+            "hotspot_comparator=hotspot_comparator.__main__:main",
         ]
     },
     zip_safe=True,
