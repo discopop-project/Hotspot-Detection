@@ -140,17 +140,30 @@ def run(arguments: HotspotComparatorArguments) -> List[int]:
         if "applied" in d:
             applied_suggestion_ids = [int(id) for id in d["applied"]]
     #print("applied suggestion ids: ", applied_suggestion_ids)
+
     # load suggestions
-    with open(os.path.join(arguments.updated, "explorer", "detection_result_dump.json"), "r") as f:
-        tmp_str = f.read()
-    detection_result: DetectionResult = jsonpickle.decode(tmp_str)  # type: ignore
+    with open(os.path.join(arguments.updated, "explorer", "patterns.json"), "r") as f:
+        detected_patterns = json.load(f)
     
     slower_suggestion_ids: List[int] = []
     for slower_position in slower_positions:
         for suggestion_id in applied_suggestion_ids:
-            pattern = detection_result.patterns.get_pattern_from_id(suggestion_id)
-            pattern_file_id = int(pattern.start_line.split(":")[0])
-            pattern_start_line = int(pattern.start_line.split(":")[1])
+            # find pattern information
+            found_pattern = False
+            pattern = dict()
+            for pattern_type in detected_patterns["patterns"]:
+                for pattern_entry in detected_patterns["patterns"][pattern_type]:
+                    if pattern_entry["pattern_id"] == suggestion_id:
+                        pattern = pattern_entry
+                        found_pattern = True
+                        break
+                if found_pattern:
+                    break
+
+            if not found_pattern:
+                continue
+            pattern_file_id = int(pattern["start_line"].split(":")[0])
+            pattern_start_line = int(pattern["start_line"].split(":")[1])
             if slower_position[0] == pattern_file_id and slower_position[1] == pattern_start_line:
                 slower_suggestion_ids.append(suggestion_id)
 
@@ -170,25 +183,37 @@ def plot(baseline_values: Dict[int, float], updated_values: Dict[int, float], cs
 
     names = [__get_lineid_string(key, cs_id_dict) for key in sorted_keys]
 
-    # plot runtime contribution
+    # determine values for plotting
     contribution_values = [baseline_values[key] for key in sorted_keys]
+    updated_contribution_values = [updated_values[key] for key in sorted_keys]
+    diff_values = [updated_values[key] - baseline_values[key] for key in sorted_keys]
+    abs_diff_values = [abs(val) for val in diff_values]
+
+    # determine axis scale
+    y_value_range = [0, max(contribution_values + updated_contribution_values + abs_diff_values)]
+
+    # plot runtime contribution
     contribution_colors = ["grey" for value in contribution_values]
-    contribution_value_range = [0, max(contribution_values)]
-    ax1 = plt.subplot(2,1,1)
+    ax1 = plt.subplot(3,1,1)
     ax1.bar(names, contribution_values, color=contribution_colors)
     ax1.set_xlabel("CS_ID")
     ax1.set_ylabel("baseline runtime (s)")
-    ax1.set_ylim(contribution_value_range)
+    ax1.set_ylim(y_value_range)
+
+    # plot updated runtime
+    updated_contribution_colors = ["grey" for value in updated_contribution_values]
+    ax2 = plt.subplot(3,1,2, sharex=ax1, sharey=ax1)
+    ax2.bar(names, updated_contribution_values, color=updated_contribution_colors)
+    ax2.set_xlabel("CS_ID")
+    ax2.set_ylabel("updated runtime (s)")
+    ax2.set_ylim(y_value_range)
 
     # plot differences
-    diff_values = [updated_values[key] - baseline_values[key] for key in sorted_keys]
     diff_colors = ["red" if value > 0 else "green" for value in diff_values]
-    abs_diff_values = [abs(val) for val in diff_values]
-    diff_value_range = [0, max(contribution_values + abs_diff_values)]
-    ax2 = plt.subplot(2,1,2, sharex=ax1)
-    ax2.bar(names, abs_diff_values, color=diff_colors)
-    ax2.set_xlabel("CS_ID")
-    ax2.set_ylabel("runtime difference (s)")
-    ax2.set_ylim(diff_value_range)
+    ax3 = plt.subplot(3,1,3, sharex=ax1, sharey=ax1)
+    ax3.bar(names, abs_diff_values, color=diff_colors)
+    ax3.set_xlabel("CS_ID")
+    ax3.set_ylabel("runtime difference (s)")
+    ax3.set_ylim(y_value_range)
 
     plt.show()
