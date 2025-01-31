@@ -18,10 +18,11 @@ def parse_args() -> HotspotComparatorArguments:
 
     parser.add_argument("-b", "--baseline", type=str, default=os.getcwd(), help="Path to .discopop folder of the baseline implementation. Make sure executions of baseline and update use the same input sizes.")
     parser.add_argument("-u", "--updated", type=str, default=os.getcwd(), help="Path to .discopop folder of the updated implementation. Make sure executions of baseline and update use the same input sizes.")
+    parser.add_argument("-p", "--plot", action="store_true", help="Plot the runtime differences of both configurations" )
     parser.add_argument("-n", "--execution_number", type=int, default=-1, help="ID of the compared execution. Default: latest")
     arguments = parser.parse_args()
 
-    return HotspotComparatorArguments(baseline = arguments.baseline, updated = arguments.updated, number = arguments.execution_number)
+    return HotspotComparatorArguments(baseline = arguments.baseline, updated = arguments.updated, number = arguments.execution_number, plot = arguments.plot)
 
 
 def main():

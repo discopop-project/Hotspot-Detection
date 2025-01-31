@@ -21,6 +21,7 @@ class HotspotComparatorArguments(object):
     baseline: str  # path to .discopop folder of the baseline code
     updated: str  # path to .discopop folder of the updated code
     number: int  # execution number to be compared
+    plot: bool
 
     def __post_init__(self):
         self.__determine_number()
@@ -129,7 +130,8 @@ def run(arguments: HotspotComparatorArguments) -> List[int]:
     #print("FULL: ")
     #print([cs_id_dict[key] for key in slower_cs])
 
-    plot(baseline_values, updated_values, cs_id_dict)
+    if arguments.plot:
+        plot(baseline_values, updated_values, cs_id_dict)
 
 #    for cs_id in slower_cs:
 #        slower_positions.append((cs_id_dict[cs_id][2], cs_id_dict[cs_id][1]))
