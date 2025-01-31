@@ -159,12 +159,28 @@ def run(arguments: HotspotComparatorArguments) -> List[int]:
                         break
                 if found_pattern:
                     break
-
             if not found_pattern:
                 continue
-            pattern_file_id = int(pattern["start_line"].split(":")[0])
-            pattern_start_line = int(pattern["start_line"].split(":")[1])
-            if slower_position[0] == pattern_file_id and slower_position[1] == pattern_start_line:
+
+            # check if the pattern is potentially detremental
+            slower_position_line_id = str(slower_position[0]) + ":" + str(slower_position[1])
+            is_potentially_slower = False
+            if slower_position_line_id in pattern["affected_line_ids"]:
+                if suggestion_id not in slower_suggestion_ids:
+                    is_potentially_slower = True        
+            if not is_potentially_slower:
+                continue
+        
+            # if the pattern is potentially detremental to the programs performance, check its effects in detail by summing up total differences.
+        
+            runtime_difference = 0.0
+            for cs_id in cs_id_dict:
+                line_id = str(cs_id_dict[cs_id][2]) + ":" + str(cs_id_dict[cs_id][1])
+                if line_id in pattern["affected_line_ids"]:
+                    runtime_difference += updated_values[cs_id] - baseline_values[cs_id]
+            #print("PATTERN: ", suggestion_id, " -> DIFF: ", runtime_difference)
+
+            if runtime_difference > 0:
                 slower_suggestion_ids.append(suggestion_id)
 
     #print("Slower suggestion ids:")
