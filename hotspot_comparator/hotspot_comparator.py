@@ -126,10 +126,13 @@ def run(arguments: HotspotComparatorArguments) -> List[int]:
             else:
                 raise ValueError("Unsupported format: " + str(split_line))
 
+    #print("FULL: ")
+    #print([cs_id_dict[key] for key in slower_cs])
+
     plot(baseline_values, updated_values, cs_id_dict)
 
-    for cs_id in slower_cs:
-        slower_positions.append((cs_id_dict[cs_id][2], cs_id_dict[cs_id][1]))
+#    for cs_id in slower_cs:
+#        slower_positions.append((cs_id_dict[cs_id][2], cs_id_dict[cs_id][1]))
     #print("SLOWER POSITIONS:")
     #print(slower_positions)
 
@@ -145,43 +148,62 @@ def run(arguments: HotspotComparatorArguments) -> List[int]:
     with open(os.path.join(arguments.updated, "explorer", "patterns.json"), "r") as f:
         detected_patterns = json.load(f)
     
+#    print("ALL SLOWER: ", slower_positions)
+
     slower_suggestion_ids: List[int] = []
-    for slower_position in slower_positions:
-        for suggestion_id in applied_suggestion_ids:
-            # find pattern information
-            found_pattern = False
-            pattern = dict()
-            for pattern_type in detected_patterns["patterns"]:
-                for pattern_entry in detected_patterns["patterns"][pattern_type]:
-                    if pattern_entry["pattern_id"] == suggestion_id:
-                        pattern = pattern_entry
-                        found_pattern = True
-                        break
-                if found_pattern:
+    
+    for suggestion_id in applied_suggestion_ids:
+        # find pattern information
+        found_pattern = False
+        pattern = dict()
+        for pattern_type in detected_patterns["patterns"]:
+            for pattern_entry in detected_patterns["patterns"][pattern_type]:
+                if pattern_entry["pattern_id"] == suggestion_id:
+                    pattern = pattern_entry
+                    found_pattern = True
                     break
-            if not found_pattern:
+            if found_pattern:
+                break
+        if not found_pattern:
+            continue
+
+    
+        if "affected_functions" not in pattern:
+            continue
+        cleaned_affected_functions = [(int(f.split(":")[0]), f.split(":")[2]) for f in pattern["affected_functions"]]
+        for slow_cs_id in slower_cs:
+            # check if the pattern is potentially detremental to function execution times
+            if cs_id_dict[slow_cs_id][0] != "func":
                 continue
+
+            cleaned_slow_function = (cs_id_dict[slow_cs_id][2], cs_id_dict[slow_cs_id][3])
+
+            if cleaned_slow_function in cleaned_affected_functions:
+                slower_suggestion_ids.append(suggestion_id)
+                break
+
 
             # check if the pattern is potentially detremental
-            slower_position_line_id = str(slower_position[0]) + ":" + str(slower_position[1])
-            is_potentially_slower = False
-            if slower_position_line_id in pattern["affected_line_ids"]:
-                if suggestion_id not in slower_suggestion_ids:
-                    is_potentially_slower = True        
-            if not is_potentially_slower:
-                continue
-        
-            # if the pattern is potentially detremental to the programs performance, check its effects in detail by summing up total differences.
-        
-            runtime_difference = 0.0
-            for cs_id in cs_id_dict:
-                line_id = str(cs_id_dict[cs_id][2]) + ":" + str(cs_id_dict[cs_id][1])
-                if line_id in pattern["affected_line_ids"]:
-                    runtime_difference += updated_values[cs_id] - baseline_values[cs_id]
-            #print("PATTERN: ", suggestion_id, " -> DIFF: ", runtime_difference)
-
-            if runtime_difference > 0:
-                slower_suggestion_ids.append(suggestion_id)
+#            slower_position_line_id = str(slower_position[0]) + ":" + str(slower_position[1])
+#            is_potentially_slower = False
+#            print("SLOWER: ", slower_position_line_id)
+#            print("AFFECTED FUNCTIONS:", pattern["affected_functions"])
+#            if slower_position_line_id in pattern["affected_line_ids"]:
+#                if suggestion_id not in slower_suggestion_ids:
+#                    is_potentially_slower = True        
+#            if not is_potentially_slower:
+#                continue
+#
+#            # if the pattern is potentially detremental to the programs performance, check its effects in detail by summing up total differences.        
+#            runtime_difference = 0.0
+#            for cs_id in cs_id_dict:
+#                line_id = str(cs_id_dict[cs_id][2]) + ":" + str(cs_id_dict[cs_id][1])
+#                if line_id in pattern["affected_line_ids"]:
+#                    runtime_difference += updated_values[cs_id] - baseline_values[cs_id]
+#            print("PATTERN: ", suggestion_id, " -> DIFF: ", runtime_difference)
+#
+#            if runtime_difference > 0:
+#                slower_suggestion_ids.append(suggestion_id)
 
     #print("Slower suggestion ids:")
     print(slower_suggestion_ids)
@@ -197,7 +219,8 @@ def plot(baseline_values: Dict[int, float], updated_values: Dict[int, float], cs
     sorted_tuples = sorted(tuples, key=lambda x: x[0], reverse=True)
     sorted_keys = [tpl[1] for tpl in sorted_tuples]
 
-    names = [__get_lineid_string(key, cs_id_dict) for key in sorted_keys]
+    #names = [__get_lineid_string(key, cs_id_dict) for key in sorted_keys]
+    names = [str(key) for key in sorted_keys]
 
     # determine values for plotting
     contribution_values = [baseline_values[key] for key in sorted_keys]
