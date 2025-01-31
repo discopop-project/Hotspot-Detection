@@ -1,3 +1,4 @@
+from os import walk
 import os.path
 import numpy as np
 import json
@@ -11,7 +12,8 @@ import jsonpickle
 from discopop_library.result_classes.DetectionResult import DetectionResult
 
 inf = float("inf")
-
+LINENUM = int
+FILENUM = int
 
 @dataclass
 class HotspotComparatorArguments(object):
@@ -21,7 +23,30 @@ class HotspotComparatorArguments(object):
     number: int  # execution number to be compared
 
     def __post_init__(self):
+        self.__determine_number()
         self.__validate()
+
+    def __determine_number(self):
+        if self.number != -1:
+            return
+        
+        baseline_numbers = []
+        for filename in next(walk(os.path.join(self.baseline, "hotspot_detection", "private")), (None, None, []))[2]:  # [] if no file
+            if filename.startswith("hotspot_result_"):
+                number = int(filename.replace("hotspot_result_", "").replace(".txt", ""))
+                baseline_numbers.append(number)
+
+        updated_numbers = []
+        for filename in next(walk(os.path.join(self.updated, "hotspot_detection", "private")), (None, None, []))[2]:  # [] if no file
+            if filename.startswith("hotspot_result_"):
+                number = int(filename.replace("hotspot_result_", "").replace(".txt", ""))
+                updated_numbers.append(number)
+
+        overlap = [n for n in baseline_numbers if n in updated_numbers]
+        if len(overlap) == 0:
+            raise ValueError("No overlapping measurement numbers!")
+        self.number = sorted(overlap)[-1]  # select highest number
+
 
     def __validate(self):
         """Validate the arguments passed to the hotspot_comparator, e.g check if given files exist"""
@@ -79,8 +104,6 @@ def run(arguments: HotspotComparatorArguments) -> List[int]:
     for key in remove:
         del updated_values[key]
 
-    # plot(baseline_values, updated_values)
-
     # Identify slower code sections
     slower_cs: List[int] = []
     for key in baseline_values:
@@ -91,7 +114,7 @@ def run(arguments: HotspotComparatorArguments) -> List[int]:
 
     # translate cs ids to file ids and line numbers
     slower_positions: List[Tuple[int, int]] = []
-    cs_id_dict: Dict[int, Tuple[str, int, int, str]] = dict()
+    cs_id_dict: Dict[int, Tuple[str, LINENUM, FILENUM, str]] = dict()
     with open(os.path.join(arguments.baseline, "hotspot_detection","private", "cs_id.txt"), "r") as f:
         for line in f.readlines():
             line = line.replace("\n", "")
@@ -102,6 +125,8 @@ def run(arguments: HotspotComparatorArguments) -> List[int]:
                 cs_id_dict[int(split_line[0])] = (split_line[1], int(split_line[2]), int(split_line[3]), split_line[4])
             else:
                 raise ValueError("Unsupported format: " + str(split_line))
+
+    plot(baseline_values, updated_values, cs_id_dict)
 
     for cs_id in slower_cs:
         slower_positions.append((cs_id_dict[cs_id][2], cs_id_dict[cs_id][1]))
@@ -134,22 +159,26 @@ def run(arguments: HotspotComparatorArguments) -> List[int]:
 
     return slower_suggestion_ids
 
+def __get_lineid_string(cs_id: int, cs_id_dict: Dict[int, Tuple[str, LINENUM, FILENUM, str]]) -> str:
+    return "" + str(cs_id_dict[cs_id][2]) + ":" + str(cs_id_dict[cs_id][1])
 
-def plot(baseline_values: Dict[int, float], updated_values: Dict[int, float]):
-    print("Plotting...")
+def plot(baseline_values: Dict[int, float], updated_values: Dict[int, float], cs_id_dict: Dict[int, Tuple[str, LINENUM, FILENUM, str]]):
+    names = [__get_lineid_string(key, cs_id_dict) for key in baseline_values]
 
+    # plot runtime contribution
+    contribution_values = [baseline_values[key] for key in baseline_values]
+    contribution_colors = ["grey" for value in contribution_values]
+    ax1 = plt.subplot(2,1,1)
+    ax1.bar(names, contribution_values, color=contribution_colors)
+    ax1.set_xlabel("CS_ID")
+    ax1.set_ylabel("baseline runtime (s)")
 
-
-    names = [str(key) for key in baseline_values]
-    values = [updated_values[key] - baseline_values[key] for key in baseline_values]
-    colors = ["red" if value > 0 else "green" for value in values]
-
-    plt.figure(figsize=(9, 4))
-
-    plt.subplot(131)
-    plt.bar(names, values, color=colors)
-
-    plt.xlabel("CS_ID")
-    plt.ylabel("runtime difference (s)")
+    # plot differences
+    diff_values = [updated_values[key] - baseline_values[key] for key in baseline_values]
+    diff_colors = ["red" if value > 0 else "green" for value in diff_values]
+    ax2 = plt.subplot(2,1,2, sharex=ax1)
+    ax2.bar(names, diff_values, color=diff_colors)
+    ax2.set_xlabel("CS_ID")
+    ax2.set_ylabel("runtime difference (s)")
 
     plt.show()
