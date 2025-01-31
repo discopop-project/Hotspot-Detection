@@ -163,22 +163,32 @@ def __get_lineid_string(cs_id: int, cs_id_dict: Dict[int, Tuple[str, LINENUM, FI
     return "" + str(cs_id_dict[cs_id][2]) + ":" + str(cs_id_dict[cs_id][1])
 
 def plot(baseline_values: Dict[int, float], updated_values: Dict[int, float], cs_id_dict: Dict[int, Tuple[str, LINENUM, FILENUM, str]]):
-    names = [__get_lineid_string(key, cs_id_dict) for key in baseline_values]
+    # sort keys descending by runtime contribution
+    tuples = [(baseline_values[key], key) for key in baseline_values]
+    sorted_tuples = sorted(tuples, key=lambda x: x[0], reverse=True)
+    sorted_keys = [tpl[1] for tpl in sorted_tuples]
+
+    names = [__get_lineid_string(key, cs_id_dict) for key in sorted_keys]
 
     # plot runtime contribution
-    contribution_values = [baseline_values[key] for key in baseline_values]
+    contribution_values = [baseline_values[key] for key in sorted_keys]
     contribution_colors = ["grey" for value in contribution_values]
+    contribution_value_range = [0, max(contribution_values)]
     ax1 = plt.subplot(2,1,1)
     ax1.bar(names, contribution_values, color=contribution_colors)
     ax1.set_xlabel("CS_ID")
     ax1.set_ylabel("baseline runtime (s)")
+    ax1.set_ylim(contribution_value_range)
 
     # plot differences
-    diff_values = [updated_values[key] - baseline_values[key] for key in baseline_values]
+    diff_values = [updated_values[key] - baseline_values[key] for key in sorted_keys]
     diff_colors = ["red" if value > 0 else "green" for value in diff_values]
+    abs_diff_values = [abs(val) for val in diff_values]
+    diff_value_range = [0, max(contribution_values + abs_diff_values)]
     ax2 = plt.subplot(2,1,2, sharex=ax1)
-    ax2.bar(names, diff_values, color=diff_colors)
+    ax2.bar(names, abs_diff_values, color=diff_colors)
     ax2.set_xlabel("CS_ID")
     ax2.set_ylabel("runtime difference (s)")
+    ax2.set_ylim(diff_value_range)
 
     plt.show()
